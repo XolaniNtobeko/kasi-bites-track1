@@ -9,4 +9,22 @@ void main() {
     expect(cartProvider.totalAmount, 0.0);
     expect(cartProvider.items.isEmpty, true);
   });
+
+  test('Adding an item to cart should increase item count and total amount', () {
+    final cartProvider = CartProvider();
+    const testItem = FoodItem(
+      id: 'k1',
+      name: 'Classic Kasi Kota',
+      description: 'Quarter loaf, chips, polony, cheese.',
+      price: 35.00,
+    );
+
+    cartProvider.addItem(testItem);
+
+    expect(cartProvider.itemCount, 1);
+    expect(cartProvider.totalAmount, 35.00);
+    expect(cartProvider.items.containsKey('k1'), true);
+    expect(cartProvider.items['k1']?.quantity, 1);
+  });
+
 }
