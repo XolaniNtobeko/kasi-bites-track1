@@ -22,4 +22,22 @@ class CartProvider extends ChangeNotifier {
     });
     return total;
   }
+
+  void addItem(FoodItem food) {
+    if (_items.containsKey(food.id)) {
+      _items.update(
+        food.id,
+        (existingCartItem) => CartItem(
+          food: existingCartItem.food,
+          quantity: existingCartItem.quantity + 1,
+        ),
+      );
+    } else {
+      _items.putIfAbsent(
+        food.id,
+        () => CartItem(food: food, quantity: 1),
+      );
+    }
+    notifyListeners();
+  }
 }
