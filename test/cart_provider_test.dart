@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kasi_bites/models/food_item.dart';
 import 'package:kasi_bites/providers/cart_provider.dart';
 
 void main() {
@@ -27,4 +28,20 @@ void main() {
     expect(cartProvider.items['k1']?.quantity, 1);
   });
 
+  test('Adding the same item multiple times should increment its quantity', () {
+    final cartProvider = CartProvider();
+    const testItem = FoodItem(
+      id: 'k1',
+      name: 'Classic Kasi Kota',
+      description: 'Quarter loaf, chips, polony, cheese.',
+      price: 35.00,
+    );
+
+    cartProvider.addItem(testItem);
+    cartProvider.addItem(testItem);
+
+    expect(cartProvider.itemCount, 2);
+    expect(cartProvider.totalAmount, 70.00);
+    expect(cartProvider.items['k1']?.quantity, 2);
+  });
 }
