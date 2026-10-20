@@ -44,4 +44,21 @@ void main() {
     expect(cartProvider.totalAmount, 70.00);
     expect(cartProvider.items['k1']?.quantity, 2);
   });
+
+  test('Removing an item from cart should clear it and reset total amount', () {
+    final cartProvider = CartProvider();
+    const testItem = FoodItem(
+      id: 'k1',
+      name: 'Classic Kasi Kota',
+      description: 'Quarter loaf, chips, polony, cheese.',
+      price: 35.00,
+    );
+
+    cartProvider.addItem(testItem);
+    cartProvider.removeItem('k1');
+
+    expect(cartProvider.itemCount, 0);
+    expect(cartProvider.totalAmount, 0.0);
+    expect(cartProvider.items.containsKey('k1'), false);
+  });
 }
