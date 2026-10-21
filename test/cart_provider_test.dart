@@ -61,4 +61,31 @@ void main() {
     expect(cartProvider.totalAmount, 0.0);
     expect(cartProvider.items.containsKey('k1'), false);
   });
+
+  test('Clearing cart should remove all items and reset total amount', () {
+    final cartProvider = CartProvider();
+    const item1 = FoodItem(
+      id: 'k1',
+      name: 'Classic Kasi Kota',
+      description: 'Quarter loaf, chips, polony, cheese.',
+      price: 35.00,
+    );
+    const item2 = FoodItem(
+      id: 'k2',
+      name: 'Gatsby Special',
+      description: 'Full loaf, steak, chips, sauces.',
+      price: 85.00,
+    );
+
+    cartProvider.addItem(item1);
+    cartProvider.addItem(item2);
+
+    expect(cartProvider.itemCount, 2);
+
+    cartProvider.clearCart();
+
+    expect(cartProvider.itemCount, 0);
+    expect(cartProvider.totalAmount, 0.0);
+    expect(cartProvider.items.isEmpty, true);
+  });
 }

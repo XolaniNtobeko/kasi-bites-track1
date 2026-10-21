@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kasi_bites/models/food_item.dart';
+import 'package:kasi_bites/models/food_item.dart'; // Must match name: in pubspec.yaml
 
 void main() {
   test('FoodItem stores name, description, and price correctly', () {
