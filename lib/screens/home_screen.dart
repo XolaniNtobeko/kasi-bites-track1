@@ -9,69 +9,93 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: orderProvider,
-      builder: (context, child) {
-        final orders = orderProvider.orders;
-
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Kasi Bites - Kitchen Dashboard 🍳'),
-            backgroundColor: Colors.deepOrange,
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Kasi Bites - Kitchen Dashboard 🍳'),
+          backgroundColor: Colors.deepOrange,
+          bottom: const TabBar(
+            isScrollable: true,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(text: 'All'),
+              Tab(text: 'Pending'),
+              Tab(text: 'Preparing'),
+              Tab(text: 'Completed'),
+            ],
           ),
-          body: orders.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No incoming WhatsApp orders yet.',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) {
-                    final order = orders[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      elevation: 3,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${order.id} - ${order.customerName}',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                _buildStatusBadge(order.status),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Phone: ${order.customerPhone}',
-                              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                            ),
-                            const Divider(),
-                            ...order.items.map((item) => Text(
-                                  '• ${item.quantity}x ${item.name}',
-                                  style: const TextStyle(fontSize: 14),
-                                )),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: _buildActionButtons(order),
-                            ),
-                          ],
-                        ),
+        ),
+        body: AnimatedBuilder(
+          animation: orderProvider,
+          builder: (context, child) {
+            return TabBarView(
+              children: [
+                _buildOrderList(orderProvider.getOrdersByStatus(null)),
+                _buildOrderList(orderProvider.getOrdersByStatus(OrderStatus.pending)),
+                _buildOrderList(orderProvider.getOrdersByStatus(OrderStatus.preparing)),
+                _buildOrderList(orderProvider.getOrdersByStatus(OrderStatus.completed)),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderList(List<MerchantOrder> orders) {
+    if (orders.isEmpty) {
+      return const Center(
+        child: Text(
+          'No orders in this section.',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          elevation: 3,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${order.id} - ${order.customerName}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                    );
-                  },
+                    ),
+                    _buildStatusBadge(order.status),
+                  ],
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  'Phone: ${order.customerPhone}',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                ),
+                const Divider(),
+                ...order.items.map((item) => Text(
+                      '• ${item.quantity}x ${item.name}',
+                      style: const TextStyle(fontSize: 14),
+                    )),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: _buildActionButtons(order),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

@@ -42,5 +42,20 @@ void main() {
       expect(orderProvider.orders.length, initialCount + 1);
       expect(orderProvider.orders.first.id, 'ORD-999');
     });
+
+    test('should filter orders accurately by status', () async {
+      await orderProvider.fetchOrders();
+
+      // Initially, all fetched orders are Pending
+      expect(orderProvider.getOrdersByStatus(OrderStatus.pending).length, 1);
+      expect(orderProvider.getOrdersByStatus(OrderStatus.preparing).length, 0);
+
+      // Transition the order status
+      final orderId = orderProvider.orders.first.id;
+      await orderProvider.updateOrderStatus(orderId, OrderStatus.preparing);
+
+      expect(orderProvider.getOrdersByStatus(OrderStatus.pending).length, 0);
+      expect(orderProvider.getOrdersByStatus(OrderStatus.preparing).length, 1);
+    });
   });
 }

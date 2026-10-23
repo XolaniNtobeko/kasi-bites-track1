@@ -53,4 +53,9 @@ class OrderProvider extends ChangeNotifier {
     _orders.insert(0, order);
     notifyListeners();
   }
+  // Returns orders filtered by status, or all orders if null
+List<MerchantOrder> getOrdersByStatus(OrderStatus? status) {
+  if (status == null) return orders;
+  return _orders.where((order) => order.status == status).toList();
+}
 }
