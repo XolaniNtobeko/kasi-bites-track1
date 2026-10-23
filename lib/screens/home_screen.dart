@@ -35,6 +35,65 @@ class HomeScreen extends StatelessWidget {
     orderProvider.addOrder(newOrder);
   }
 
+  void _showOrderDetailsBottomSheet(BuildContext context, MerchantOrder order) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Order Details',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Order ID: ${order.id}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text('Customer: ${order.customerName}', style: const TextStyle(fontSize: 15)),
+              Text('Phone: ${order.customerPhone}', style: const TextStyle(fontSize: 15)),
+              Text(
+                'Time Received: ${order.timestamp.hour.toString().padLeft(2, '0')}:${order.timestamp.minute.toString().padLeft(2, '0')}',
+                style: const TextStyle(fontSize: 15, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Items Ordered:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 4),
+              ...order.items.map((item) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: Text('• ${item.quantity}x ${item.name}', style: const TextStyle(fontSize: 14)),
+                  )),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -59,10 +118,10 @@ class HomeScreen extends StatelessWidget {
           builder: (context, child) {
             return TabBarView(
               children: [
-                _buildOrderList(orderProvider.getOrdersByStatus(null)),
-                _buildOrderList(orderProvider.getOrdersByStatus(OrderStatus.pending)),
-                _buildOrderList(orderProvider.getOrdersByStatus(OrderStatus.preparing)),
-                _buildOrderList(orderProvider.getOrdersByStatus(OrderStatus.completed)),
+                _buildOrderList(context, orderProvider.getOrdersByStatus(null)),
+                _buildOrderList(context, orderProvider.getOrdersByStatus(OrderStatus.pending)),
+                _buildOrderList(context, orderProvider.getOrdersByStatus(OrderStatus.preparing)),
+                _buildOrderList(context, orderProvider.getOrdersByStatus(OrderStatus.completed)),
               ],
             );
           },
@@ -77,7 +136,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOrderList(List<MerchantOrder> orders) {
+  Widget _buildOrderList(BuildContext context, List<MerchantOrder> orders) {
     if (orders.isEmpty) {
       return const Center(
         child: Text(
@@ -94,40 +153,44 @@ class HomeScreen extends StatelessWidget {
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           elevation: 3,
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${order.id} - ${order.customerName}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+          child: InkWell(
+            onTap: () => _showOrderDetailsBottomSheet(context, order),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${order.id} - ${order.customerName}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    _buildStatusBadge(order.status),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Phone: ${order.customerPhone}',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                ),
-                const Divider(),
-                ...order.items.map((item) => Text(
-                      '• ${item.quantity}x ${item.name}',
-                      style: const TextStyle(fontSize: 14),
-                    )),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: _buildActionButtons(order),
-                ),
-              ],
+                      _buildStatusBadge(order.status),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Phone: ${order.customerPhone}',
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                  ),
+                  const Divider(),
+                  ...order.items.map((item) => Text(
+                        '• ${item.quantity}x ${item.name}',
+                        style: const TextStyle(fontSize: 14),
+                      )),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: _buildActionButtons(order),
+                  ),
+                ],
+              ),
             ),
           ),
         );

@@ -66,4 +66,26 @@ void main() {
   // Verify multiple order cards containing ORD- exist
   expect(find.textContaining('ORD-'), findsAtLeastNWidgets(2));
 });
+
+  testWidgets('opens order details bottom sheet when order card is tapped', (WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await orderProvider.fetchOrders();
+  });
+
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: HomeScreen(),
+    ),
+  );
+  await tester.pump();
+
+  // Tap on the first order card title/text
+  final orderCard = find.textContaining('Sipho').first;
+  await tester.tap(orderCard);
+  await tester.pumpAndSettle();
+
+  // Verify bottom sheet title and details are visible
+  expect(find.text('Order Details'), findsOneWidget);
+  expect(find.textContaining('Phone:'), findsWidgets);
+});
 }
