@@ -1,43 +1,56 @@
 import 'package:flutter/foundation.dart';
 import '../models/order_model.dart';
+import '../services/order_service.dart';
 
 class OrderProvider extends ChangeNotifier {
-  final List<MerchantOrder> _orders = [
-    MerchantOrder(
-      id: 'ORD-001',
-      customerName: 'Thabo',
-      customerPhone: '+27821112233',
-      items: const [
-        OrderItem(name: 'Classic Kota', quantity: 2),
-        OrderItem(name: 'Coke 500ml', quantity: 1),
-      ],
-      status: OrderStatus.pending,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
-    MerchantOrder(
-      id: 'ORD-002',
-      customerName: 'Zinhle',
-      customerPhone: '+27834445566',
-      items: const [
-        OrderItem(name: 'Dagwood Burger', quantity: 1),
-      ],
-      status: OrderStatus.preparing,
-      timestamp: DateTime.now().subtract(const Duration(minutes: 12)),
-    ),
-  ];
+  final OrderService _orderService;
+
+  OrderProvider({OrderService? orderService})
+      : _orderService = orderService ?? OrderService();
+
+  final List<MerchantOrder> _orders = [];
+  bool _isLoading = false;
 
   List<MerchantOrder> get orders => List.unmodifiable(_orders);
+  bool get isLoading => _isLoading;
 
-  void updateOrderStatus(String id, OrderStatus newStatus) {
-    final orderIndex = _orders.indexWhere((o) => o.id == id);
-    if (orderIndex != -1) {
-      _orders[orderIndex].status = newStatus;
+  // Fetch orders from the Java/Twilio backend via OrderService
+  Future<void> fetchOrders() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final fetchedOrders = await _orderService.fetchOrders();
+      _orders.clear();
+      _orders.addAll(fetchedOrders);
+    } catch (e) {
+      debugPrint('Error fetching orders: $e');
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
+  Future<void> updateOrderStatus(String id, OrderStatus newStatus) async {
+    final orderIndex = _orders.indexWhere((o) => o.id == id);
+    if (orderIndex != -1) {
+      // Optimistic UI update locally
+      final previousStatus = _orders[orderIndex].status;
+      _orders[orderIndex].status = newStatus;
+      notifyListeners();
+
+      // Sync status update with backend
+      final success = await _orderService.updateOrderStatusOnBackend(id, newStatus);
+      if (!success) {
+        // Rollback on failure
+        _orders[orderIndex].status = previousStatus;
+        notifyListeners();
+      }
+    }
+  }
+
   void addOrder(MerchantOrder order) {
-    _orders.insert(0, order); // Newest incoming orders appear at the top
+    _orders.insert(0, order);
     notifyListeners();
   }
 }

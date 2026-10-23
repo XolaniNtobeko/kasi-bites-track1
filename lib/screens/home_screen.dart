@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 
-// Global instance for the screen feed
 final OrderProvider orderProvider = OrderProvider();
 
 class HomeScreen extends StatelessWidget {

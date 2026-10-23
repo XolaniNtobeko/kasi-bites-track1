@@ -10,14 +10,16 @@ void main() {
       orderProvider = OrderProvider();
     });
 
-    test('should initialize with initial mock orders', () {
+    test('should fetch initial orders from service', () async {
+      await orderProvider.fetchOrders();
       expect(orderProvider.orders.isNotEmpty, true);
     });
 
-    test('should update order status from pending to preparing', () {
+    test('should update order status from pending to preparing', () async {
+      await orderProvider.fetchOrders();
       final orderId = orderProvider.orders.first.id;
 
-      orderProvider.updateOrderStatus(orderId, OrderStatus.preparing);
+      await orderProvider.updateOrderStatus(orderId, OrderStatus.preparing);
 
       final updatedOrder = orderProvider.orders.firstWhere((o) => o.id == orderId);
       expect(updatedOrder.status, OrderStatus.preparing);
