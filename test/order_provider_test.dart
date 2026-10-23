@@ -46,16 +46,16 @@ void main() {
     test('should filter orders accurately by status', () async {
       await orderProvider.fetchOrders();
 
-      // Initially, all fetched orders are Pending
+      // Fallback data has 1 pending and 1 preparing order
       expect(orderProvider.getOrdersByStatus(OrderStatus.pending).length, 1);
-      expect(orderProvider.getOrdersByStatus(OrderStatus.preparing).length, 0);
+      expect(orderProvider.getOrdersByStatus(OrderStatus.preparing).length, 1);
 
-      // Transition the order status
-      final orderId = orderProvider.orders.first.id;
-      await orderProvider.updateOrderStatus(orderId, OrderStatus.preparing);
+      // Transition the pending order to preparing
+      final pendingOrderId = orderProvider.getOrdersByStatus(OrderStatus.pending).first.id;
+      await orderProvider.updateOrderStatus(pendingOrderId, OrderStatus.preparing);
 
       expect(orderProvider.getOrdersByStatus(OrderStatus.pending).length, 0);
-      expect(orderProvider.getOrdersByStatus(OrderStatus.preparing).length, 1);
+      expect(orderProvider.getOrdersByStatus(OrderStatus.preparing).length, 2);
     });
   });
 }

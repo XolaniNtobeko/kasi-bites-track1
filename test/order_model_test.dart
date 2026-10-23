@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kasi_bites/models/order_model.dart'; // Adjust path if needed
+import 'package:kasi_bites/models/order_model.dart';
 
 void main() {
   group('MerchantOrder Model Tests', () {
