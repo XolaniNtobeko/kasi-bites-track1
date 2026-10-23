@@ -43,4 +43,27 @@ void main() {
       expect(find.text('Mark Complete'), findsOneWidget);
     });
   });
+
+  testWidgets('simulates receiving a new dynamic WhatsApp order', (WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await orderProvider.fetchOrders();
+  });
+
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: HomeScreen(),
+    ),
+  );
+  await tester.pump();
+
+  // Tap the dynamic incoming order FAB
+  final fab = find.byType(FloatingActionButton);
+  expect(fab, findsOneWidget);
+
+  await tester.tap(fab);
+  await tester.pump();
+
+  // Verify multiple order cards containing ORD- exist
+  expect(find.textContaining('ORD-'), findsAtLeastNWidgets(2));
+});
 }

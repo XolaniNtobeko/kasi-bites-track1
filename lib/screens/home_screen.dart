@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
@@ -6,6 +7,33 @@ final OrderProvider orderProvider = OrderProvider();
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  void _simulateIncomingWhatsAppOrder() {
+    final random = Random();
+    final sampleCustomers = ['Lindiwe', 'Bongani', 'Thando', 'Kagiso', 'Ayanda'];
+    final sampleItems = [
+      'Russian & Chips Roll',
+      'Special Kota w/ Cheese',
+      'Beef Burger & Fries',
+      'Quarter Chicken Meal',
+      'Steak & Egg Sandwich'
+    ];
+
+    final orderId = 'ORD-${random.nextInt(900) + 100}';
+    final customer = sampleCustomers[random.nextInt(sampleCustomers.length)];
+    final item = sampleItems[random.nextInt(sampleItems.length)];
+
+    final newOrder = MerchantOrder(
+      id: orderId,
+      customerName: customer,
+      customerPhone: '+2783${random.nextInt(8999999) + 1000000}',
+      items: [OrderItem(name: item, quantity: random.nextInt(2) + 1)],
+      status: OrderStatus.pending,
+      timestamp: DateTime.now(),
+    );
+
+    orderProvider.addOrder(newOrder);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +66,12 @@ class HomeScreen extends StatelessWidget {
               ],
             );
           },
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _simulateIncomingWhatsAppOrder,
+          backgroundColor: Colors.green.shade700,
+          icon: const Icon(Icons.mark_chat_unread, color: Colors.white),
+          label: const Text('Simulate WhatsApp Order', style: TextStyle(color: Colors.white)),
         ),
       ),
     );
