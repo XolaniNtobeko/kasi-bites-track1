@@ -88,4 +88,26 @@ void main() {
   expect(find.text('Order Details'), findsOneWidget);
   expect(find.textContaining('Phone:'), findsWidgets);
 });
+
+  testWidgets('shows a SnackBar notification when a new WhatsApp order arrives', (WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await orderProvider.fetchOrders();
+  });
+
+  await tester.pumpWidget(
+    const MaterialApp(
+      home: HomeScreen(),
+    ),
+  );
+  await tester.pump();
+
+  // Tap the dynamic incoming order FAB
+  final fab = find.byType(FloatingActionButton);
+  await tester.tap(fab);
+  await tester.pump(); // Trigger frame for SnackBar entry
+
+  // Verify SnackBar appears with notification text
+  expect(find.byType(SnackBar), findsOneWidget);
+  expect(find.textContaining('New WhatsApp order received:'), findsOneWidget);
+});
 }

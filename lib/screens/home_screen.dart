@@ -8,7 +8,7 @@ final OrderProvider orderProvider = OrderProvider();
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  void _simulateIncomingWhatsAppOrder() {
+  void _simulateIncomingWhatsAppOrder(BuildContext context) {
     final random = Random();
     final sampleCustomers = ['Lindiwe', 'Bongani', 'Thando', 'Kagiso', 'Ayanda'];
     final sampleItems = [
@@ -33,6 +33,22 @@ class HomeScreen extends StatelessWidget {
     );
 
     orderProvider.addOrder(newOrder);
+
+    // Show visual SnackBar notification
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🔔 New WhatsApp order received: $orderId from $customer!'),
+        backgroundColor: Colors.deepOrange,
+        duration: const Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'VIEW',
+          textColor: Colors.white,
+          onPressed: () {
+            _showOrderDetailsBottomSheet(context, newOrder);
+          },
+        ),
+      ),
+    );
   }
 
   void _showOrderDetailsBottomSheet(BuildContext context, MerchantOrder order) {
@@ -127,11 +143,11 @@ class HomeScreen extends StatelessWidget {
           },
         ),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: _simulateIncomingWhatsAppOrder,
-          backgroundColor: Colors.green.shade700,
-          icon: const Icon(Icons.mark_chat_unread, color: Colors.white),
-          label: const Text('Simulate WhatsApp Order', style: TextStyle(color: Colors.white)),
-        ),
+  onPressed: () => _simulateIncomingWhatsAppOrder(context),
+  backgroundColor: Colors.green.shade700,
+  icon: const Icon(Icons.mark_chat_unread, color: Colors.white),
+  label: const Text('Simulate WhatsApp Order', style: TextStyle(color: Colors.white)),
+),
       ),
     );
   }
