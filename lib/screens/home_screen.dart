@@ -1,69 +1,144 @@
 import 'package:flutter/material.dart';
-import '../models/food_item.dart';
-// Note: Make sure to import your cart provider path correctly based on your folder structure
-import '../providers/cart_provider.dart'; 
+import '../models/order_model.dart';
+import '../providers/order_provider.dart';
 
-// Sample mock data for testing
-final List<FoodItem> sampleMenu = [
-  const FoodItem(id: '1', name: 'Classic Kota', description: 'Chips, polony, cheese & special sauce', price: 35.0),
-  const FoodItem(id: '2', name: 'Dagwood Burger', description: 'Beef patty, egg, cheese & chips', price: 65.0),
-  const FoodItem(id: '3', name: 'Full Chicken & Chips', description: 'Flame-grilled with Kasi spices', price: 110.0),
-];
-
-// Global instance for testing this step
-final cartProvider = CartProvider();
+// Global instance for the screen feed
+final OrderProvider orderProvider = OrderProvider();
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kasi Bites Menu'),
-        backgroundColor: const Color.fromARGB(255, 174, 34, 255),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_cart),
-            onPressed: () {
-              // We will build the Cart Screen next!
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cart screen coming up next!')),
-              );
-            },
+    return AnimatedBuilder(
+      animation: orderProvider,
+      builder: (context, child) {
+        final orders = orderProvider.orders;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Kasi Bites - Kitchen Dashboard 🍳'),
+            backgroundColor: Colors.deepOrange,
           ),
-        ],
+          body: orders.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No incoming WhatsApp orders yet.',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) {
+                    final order = orders[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      elevation: 3,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${order.id} - ${order.customerName}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                _buildStatusBadge(order.status),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Phone: ${order.customerPhone}',
+                              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                            ),
+                            const Divider(),
+                            ...order.items.map((item) => Text(
+                                  '• ${item.quantity}x ${item.name}',
+                                  style: const TextStyle(fontSize: 14),
+                                )),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: _buildActionButtons(order),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusBadge(OrderStatus status) {
+    Color color;
+    String text;
+    switch (status) {
+      case OrderStatus.pending:
+        color = Colors.orange;
+        text = 'PENDING';
+        break;
+      case OrderStatus.preparing:
+        color = Colors.blue;
+        text = 'PREPARING';
+        break;
+      case OrderStatus.completed:
+        color = Colors.green;
+        text = 'COMPLETED';
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color),
       ),
-      body: ListView.builder(
-        itemCount: sampleMenu.length,
-        itemBuilder: (context, index) {
-          final food = sampleMenu[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: ListTile(
-              title: Text(food.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(food.description),
-                  const SizedBox(height: 4),
-                  Text('R ${food.price.toStringAsFixed(2)}', style: const TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              trailing: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 174, 34, 255)),
-                onPressed: () {
-                  cartProvider.addItem(food);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Added ${food.name} to cart! Total items: ${cartProvider.itemCount}')),
-                  );
-                },
-                child: const Text('Add', style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          );
-        },
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
       ),
     );
+  }
+
+  List<Widget> _buildActionButtons(MerchantOrder order) {
+    if (order.status == OrderStatus.pending) {
+      return [
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+          onPressed: () {
+            orderProvider.updateOrderStatus(order.id, OrderStatus.preparing);
+          },
+          icon: const Icon(Icons.fireplace, size: 16, color: Colors.white),
+          label: const Text('Start Preparing', style: TextStyle(color: Colors.white)),
+        ),
+      ];
+    } else if (order.status == OrderStatus.preparing) {
+      return [
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          onPressed: () {
+            orderProvider.updateOrderStatus(order.id, OrderStatus.completed);
+          },
+          icon: const Icon(Icons.check, size: 16, color: Colors.white),
+          label: const Text('Mark Complete', style: TextStyle(color: Colors.white)),
+        ),
+      ];
+    } else {
+      return [
+        const Text(
+          'Order Fulfilled ✔',
+          style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+        ),
+      ];
+    }
   }
 }
