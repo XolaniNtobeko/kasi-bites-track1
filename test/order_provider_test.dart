@@ -46,7 +46,6 @@ void main() {
     test('should filter orders accurately by status', () async {
       await orderProvider.fetchOrders();
 
-      // Fallback data has 1 pending and 1 preparing order
       expect(orderProvider.getOrdersByStatus(OrderStatus.pending).length, 1);
       expect(orderProvider.getOrdersByStatus(OrderStatus.preparing).length, 1);
 

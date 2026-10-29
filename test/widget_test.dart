@@ -13,5 +13,8 @@ void main() {
 
     // Verify that our dashboard title is present.
     expect(find.text('Kasi Bites - Kitchen Dashboard 🍳'), findsOneWidget);
+
+    // Dispose the global provider's active timer so the test framework invariant passes
+    orderProvider.dispose();
   });
 }

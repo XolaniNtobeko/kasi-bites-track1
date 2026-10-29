@@ -11,9 +11,15 @@ class OrderItem {
   const OrderItem({required this.name, required this.quantity});
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
+    // Safely parse quantity whether it's sent as an int or a String from the backend
+    var rawQuantity = json['quantity'];
+    int parsedQuantity = rawQuantity is String 
+        ? int.tryParse(rawQuantity) ?? 1 
+        : (rawQuantity as int? ?? 1);
+
     return OrderItem(
-      name: json['name'],
-      quantity: json['quantity'],
+      name: json['name'] ?? '',
+      quantity: parsedQuantity,
     );
   }
 
@@ -42,17 +48,21 @@ class MerchantOrder {
 
   factory MerchantOrder.fromJson(Map<String, dynamic> json) {
     return MerchantOrder(
-      id: json['id'],
-      customerName: json['customerName'],
-      customerPhone: json['customerPhone'],
-      items: (json['items'] as List)
-          .map((itemJson) => OrderItem.fromJson(itemJson))
-          .toList(),
+      id: json['id'] ?? '',
+      customerName: json['customerName'] ?? 'Customer',
+      customerPhone: json['customerPhone'] ?? '',
+      items: json['items'] != null
+          ? (json['items'] as List)
+              .map((itemJson) => OrderItem.fromJson(itemJson))
+              .toList()
+          : [],
       status: OrderStatus.values.firstWhere(
-        (e) => e.name.toLowerCase() == (json['status'] as String).toLowerCase(),
+        (e) => e.name.toLowerCase() == ((json['status'] as String?) ?? 'pending').toLowerCase(),
         orElse: () => OrderStatus.pending,
       ),
-      timestamp: DateTime.parse(json['timestamp']),
+      timestamp: json['timestamp'] != null 
+          ? DateTime.parse(json['timestamp']) 
+          : DateTime.now(),
     );
   }
 
