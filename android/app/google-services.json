@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "742428453559",
+    "project_id": "kasi-bites-e7b33",
+    "storage_bucket": "kasi-bites-e7b33.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:742428453559:android:5c299c9b65d1060d3e3b32",
+        "android_client_info": {
+          "package_name": "za.co.wethinkcode.kasi_bites"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBUtrOgazEb-hgt78b2V47_XJdrPE2NpU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
