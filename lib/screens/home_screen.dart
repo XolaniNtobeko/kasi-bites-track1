@@ -1,11 +1,53 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 
 final OrderProvider orderProvider = OrderProvider();
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _setupFirebaseMessaging();
+  }
+
+  Future<void> _setupFirebaseMessaging() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    // 1. Request permission for Android 13+ / iOS
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    debugPrint('User granted permission: ${settings.authorizationStatus}');
+
+    // 2. Get the FCM registration token for your Java backend
+    String? token = await messaging.getToken();
+    debugPrint('🔥 FCM Token: $token');
+
+    // 3. Listen to foreground messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('🔔 Foreground message received: ${message.notification?.title}');
+      if (message.notification != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${message.notification?.title}: ${message.notification?.body}'),
+            backgroundColor: Colors.deepOrange,
+          ),
+        );
+      }
+    });
+  }
 
   void _showOrderDetailsBottomSheet(BuildContext context, MerchantOrder order) {
     showModalBottomSheet(
@@ -131,7 +173,7 @@ class HomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${order.id} - ${order.customerName}',
+                        '#${order.id} - ${order.customerName}',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
