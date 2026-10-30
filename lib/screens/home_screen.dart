@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -22,9 +23,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _setupFirebaseMessaging() async {
+    try {
+      if (Firebase.apps.isEmpty) return;
+    } catch (_) {
+      return;
+    }
+
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    // 1. Request permission for Android 13+ / iOS
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
       badge: true,
@@ -33,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     debugPrint('User granted permission: ${settings.authorizationStatus}');
 
-    // 2. Get the FCM registration token for your Java backend
     String? token = await messaging.getToken();
     debugPrint('🔥 FCM Token: $token');
 
@@ -41,13 +46,11 @@ class _HomeScreenState extends State<HomeScreen> {
       await _sendTokenToBackend(token);
     }
 
-    // 3. Listen for token refreshes (in case FCM rotates the token)
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
       debugPrint('🔄 FCM Token refreshed: $newToken');
       _sendTokenToBackend(newToken);
     });
 
-    // 4. Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('🔔 Foreground message received: ${message.notification?.title}');
       if (message.notification != null && mounted) {
@@ -302,5 +305,5 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ];
     }
-  }
+  } 
 }

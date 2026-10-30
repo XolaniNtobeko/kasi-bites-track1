@@ -12,7 +12,7 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class KasiBitesServer {
-    private static final List<Map<String, Object>> orders = new CopyOnWriteArrayList<>();
+    private static final List> orders = new CopyOnWriteArrayList<>();
 
     public static void main(String[] args) throws IOException {
         int port = 8082;
@@ -32,6 +32,18 @@ public class KasiBitesServer {
         exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
     }
 
+    private static String readRequestBody(HttpExchange exchange) throws IOException {
+        try (InputStream is = exchange.getRequestBody();
+             ByteArrayOutputStream result = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = is.read(buffer)) != -1) {
+                result.write(buffer, 0, length);
+            }
+            return result.toString(StandardCharsets.UTF_8);
+        }
+    }
+
     static class OrdersHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -44,7 +56,7 @@ public class KasiBitesServer {
 
             String path = exchange.getRequestURI().getPath();
             
-            if ("GET".equalsIgnoreCase(exchange.getRequestMethod()) && path.equals("/api/orders")) {
+            if ("GET".equalsIgnoreCase(exchange.getRequestMethod()) && (path.equals("/api/orders") || path.equals("/api/orders/"))) {
                 String jsonResponse = toJsonArray(orders);
                 byte[] responseBytes = jsonResponse.getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -53,24 +65,57 @@ public class KasiBitesServer {
                 os.write(responseBytes);
                 os.close();
             } 
+            else if ("POST".equalsIgnoreCase(exchange.getRequestMethod()) && (path.equals("/api/orders") || path.equals("/api/orders/"))) {
+                String rawBody = readRequestBody(exchange);
+                
+                String orderId = "ORD-" + (new Random().nextInt(900) + 100);
+                String customerName = extractJsonField(rawBody, "customerName");
+                if (customerName.isEmpty()) customerName = "Mobile User";
+                
+                String customerPhone = extractJsonField(rawBody, "customerPhone");
+                if (customerPhone.isEmpty()) customerPhone = "+27820000000";
+                
+                String itemName = extractJsonField(rawBody, "item");
+                if (itemName.isEmpty()) itemName = extractJsonField(rawBody, "name");
+                if (itemName.isEmpty()) itemName = "Standard Kota";
+
+                Map<String, Object> newOrder = new HashMap<>();
+                newOrder.put("id", orderId);
+                newOrder.put("customerName", customerName);
+                newOrder.put("customerPhone", customerPhone);
+                newOrder.put("status", "PENDING");
+                newOrder.put("timestamp", Instant.now().toString());
+
+                List> items = new ArrayList<>();
+                Map<String, Object> item = new HashMap<>();
+                item.put("name", itemName);
+                item.put("quantity", 1);
+                items.add(item);
+                newOrder.put("items", items);
+
+                orders.add(0, newOrder);
+
+                String resp = "{\"status\":\"success\",\"orderId\":\"" + orderId + "\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, resp.getBytes(StandardCharsets.UTF_8).length);
+                OutputStream os = exchange.getResponseBody();
+                os.write(resp.getBytes(StandardCharsets.UTF_8));
+                os.close();
+
+                System.out.println("🛒 New Mobile Order created: " + orderId + " -> " + itemName);
+            }
             else if ("PUT".equalsIgnoreCase(exchange.getRequestMethod()) && path.matches("/api/orders/.+/status")) {
                 String[] parts = path.split("/");
                 String orderId = parts[3];
                 
-                InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8);
-                BufferedReader reader = new BufferedReader(isr);
-                StringBuilder body = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    body.append(line);
-                }
+                String bodyStr = readRequestBody(exchange);
 
                 String newStatus = "PENDING";
                 String statusMessage = "";
-                if (body.toString().contains("PREPARING")) {
+                if (bodyStr.contains("PREPARING")) {
                     newStatus = "PREPARING";
                     statusMessage = "Great news! Your order (" + orderId + ") is now being PREPARING 🍳";
-                } else if (body.toString().contains("COMPLETED")) {
+                } else if (bodyStr.contains("COMPLETED")) {
                     newStatus = "COMPLETED";
                     statusMessage = "Your order (" + orderId + ") is ready and completed! Thank you for choosing Kasi Bites 🎉";
                 }
@@ -84,16 +129,15 @@ public class KasiBitesServer {
                     }
                 }
 
-                // Log status notification dispatch cleanly for Sandbox testing
                 if (!customerPhone.isEmpty() && !statusMessage.isEmpty()) {
                     System.out.println("📲 [SANDBOX NOTIFICATION to " + customerPhone + "]: " + statusMessage);
                 }
 
                 String resp = "{\"status\":\"success\"}";
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, resp.getBytes().length);
+                exchange.sendResponseHeaders(200, resp.getBytes(StandardCharsets.UTF_8).length);
                 OutputStream os = exchange.getResponseBody();
-                os.write(resp.getBytes());
+                os.write(resp.getBytes(StandardCharsets.UTF_8));
                 os.close();
                 
                 System.out.println("🔄 Order " + orderId + " status updated to: " + newStatus);
@@ -113,20 +157,10 @@ public class KasiBitesServer {
                 return;
             }
 
-            InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8);
-            BufferedReader reader = new BufferedReader(isr);
-            StringBuilder body = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                body.append(line);
-            }
-
-            String rawBody = body.toString();
+            String rawBody = readRequestBody(exchange);
             
-            // Decode the 'From' parameter first so %3A and %2B are translated, then strip whatsapp:
             String rawFrom = java.net.URLDecoder.decode(extractFormParam(rawBody, "From"), StandardCharsets.UTF_8);
             String customerPhone = rawFrom.replace("whatsapp:", "");
-            
             String messageBody = java.net.URLDecoder.decode(extractFormParam(rawBody, "Body"), StandardCharsets.UTF_8);
 
             String orderId = "ORD-" + (new Random().nextInt(900) + 100);
@@ -137,7 +171,7 @@ public class KasiBitesServer {
             newOrder.put("status", "PENDING");
             newOrder.put("timestamp", Instant.now().toString());
 
-            List<Map<String, Object>> items = new ArrayList<>();
+            List> items = new ArrayList<>();
             Map<String, Object> item = new HashMap<>();
             item.put("name", messageBody.isEmpty() ? "Standard Kota" : messageBody);
             item.put("quantity", 1);
@@ -146,22 +180,32 @@ public class KasiBitesServer {
 
             orders.add(0, newOrder);
 
-            // TwiML response automatically triggers an instant WhatsApp reply back to the user from Twilio!
             String twiml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
                "<Response>" +
                "<Message>Your order (" + orderId + ") has been received by Kasi Bites! 🍳 We are getting it ready.</Message>" +
                "</Response>";
             exchange.getResponseHeaders().set("Content-Type", "text/xml");
-            exchange.sendResponseHeaders(200, twiml.getBytes().length);
+            exchange.sendResponseHeaders(200, twiml.getBytes(StandardCharsets.UTF_8).length);
             OutputStream os = exchange.getResponseBody();
-            os.write(twiml.getBytes());
+            os.write(twiml.getBytes(StandardCharsets.UTF_8));
             os.close();
             
             System.out.println("📲 New WhatsApp Order parsed and added: " + orderId + " -> " + messageBody);
         }
     }
 
-    private static String toJsonArray(List<Map<String, Object>> list) {
+    private static String extractJsonField(String json, String fieldName) {
+        String searchKey = "\"" + fieldName + "\":";
+        int idx = json.indexOf(searchKey);
+        if (idx == -1) return "";
+        int start = json.indexOf("\"", idx + searchKey.length());
+        if (start == -1) return "";
+        int end = json.indexOf("\"", start + 1);
+        if (end == -1) return "";
+        return json.substring(start + 1, end);
+    }
+
+    private static String toJsonArray(List> list) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < list.size(); i++) {
             sb.append(mapToJson(list.get(i)));
@@ -171,6 +215,7 @@ public class KasiBitesServer {
         return sb.toString();
     }
 
+    @SuppressWarnings("unchecked")
     private static String mapToJson(Map<String, Object> map) {
         StringBuilder sb = new StringBuilder("{");
         int idx = 0;

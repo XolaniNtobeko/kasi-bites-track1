@@ -19,19 +19,29 @@ class OrderProvider extends ChangeNotifier {
   }
 
   final List<MerchantOrder> _orders = [];
-  final bool _isLoading = false;
+  bool _isLoading = false;
 
   List<MerchantOrder> get orders => List.unmodifiable(_orders);
   bool get isLoading => _isLoading;
 
   Future<void> fetchOrders() async {
+    // Only set loading on initial fetch if list is empty to prevent UI flicker during polling
+    if (_orders.isEmpty) {
+      _isLoading = true;
+      notifyListeners();
+    }
+
     try {
       final fetchedOrders = await _orderService.fetchOrders();
       _orders.clear();
       _orders.addAll(fetchedOrders);
-      notifyListeners();
     } catch (e) {
       debugPrint('Error fetching orders: $e');
+    } finally {
+      if (_isLoading) {
+        _isLoading = false;
+      }
+      notifyListeners();
     }
   }
 
@@ -40,7 +50,7 @@ class OrderProvider extends ChangeNotifier {
     if (orderIndex != -1) {
       final oldOrder = _orders[orderIndex];
 
-      // Immutable update
+      // Immutable optimistic update
       _orders[orderIndex] = MerchantOrder(
         id: oldOrder.id,
         customerName: oldOrder.customerName,
@@ -54,7 +64,8 @@ class OrderProvider extends ChangeNotifier {
       try {
         await _orderService.updateOrderStatusOnBackend(id, newStatus);
       } catch (e) {
-        // Retain local optimistic state
+        debugPrint('Error updating order status on backend: $e');
+        // Optionally revert state here if needed
       }
     }
   }
