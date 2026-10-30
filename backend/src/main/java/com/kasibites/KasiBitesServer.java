@@ -11,14 +11,17 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class KasiBitesServer {
     // Thread-safe list acting as our order store
-    private static final List<Map<String, Object>> orders = new CopyOnWriteArrayList<>();
+    private static final List> orders = new CopyOnWriteArrayList<>();
+    // Thread-safe list acting as our registered device token store
+    private static final List<String> fcmTokens = new CopyOnWriteArrayList<>();
 
     public static void main(String[] args) throws IOException {
-        int port = 8081;
+        int port = 8082;
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         
         // Endpoints
         server.createContext("/api/orders", new OrdersHandler());
+        server.createContext("/api/devices", new DevicesHandler());
         server.createContext("/webhook/whatsapp", new TwilioWebhookHandler());
         
         server.setExecutor(null);
@@ -44,7 +47,7 @@ public class KasiBitesServer {
 
             String path = exchange.getRequestURI().getPath();
             
-            if ("GET".equalsIgnoreCase(exchange.getRequestMethod()) && path.equals("/api/orders")) {
+            if ("GET".equalsIgnoreCase(exchange.getRequestMethod()) && (path.equals("/api/orders") || path.equals("/api/orders/"))) {
                 String jsonResponse = toJsonArray(orders);
                 byte[] responseBytes = jsonResponse.getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -66,14 +69,70 @@ public class KasiBitesServer {
                 }
 
                 String newStatus = "PENDING";
-                if (body.toString().contains("PREPARING")) newStatus = "PREPARING";
-                if (body.toString().contains("COMPLETED")) newStatus = "COMPLETED";
+                String statusMessage = "";
+                if (body.toString().contains("PREPARING")) {
+                    newStatus = "PREPARING";
+                    statusMessage = "Great news! Your order (" + orderId + ") is now being PREPARING 🍳";
+                } else if (body.toString().contains("COMPLETED")) {
+                    newStatus = "COMPLETED";
+                    statusMessage = "Your order (" + orderId + ") is ready and completed! Thank you for choosing Kasi Bites 🎉";
+                }
 
+                String customerPhone = "";
                 for (Map<String, Object> order : orders) {
                     if (order.get("id").equals(orderId)) {
                         order.put("status", newStatus);
+                        customerPhone = (String) order.get("customerPhone");
                         break;
                     }
+                }
+
+                if (!customerPhone.isEmpty() && !statusMessage.isEmpty()) {
+                    System.out.println("📲 [SANDBOX NOTIFICATION to " + customerPhone + "]: " + statusMessage);
+                }
+
+                String resp = "{\"status\":\"success\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(200, resp.getBytes().length);
+                OutputStream os = exchange.getResponseBody();
+                os.write(resp.getBytes());
+                os.close();
+                
+                System.out.println("🔄 Order " + orderId + " status updated to: " + newStatus);
+            } else {
+                exchange.sendResponseHeaders(404, -1);
+            }
+        }
+    }
+
+    static class DevicesHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            addCorsHeaders(exchange);
+
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            String path = exchange.getRequestURI().getPath();
+            if (path.equals("/api/devices") || path.equals("/api/devices/")) {
+                InputStreamReader isr = new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8);
+                BufferedReader reader = new BufferedReader(isr);
+                StringBuilder body = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    body.append(line);
+                }
+
+                String token = extractJsonField(body.toString(), "fcmToken");
+                if (token == null || token.isEmpty()) {
+                    token = body.toString().trim(); // Fallback if raw string
+                }
+
+                if (!token.isEmpty() && !fcmTokens.contains(token)) {
+                    fcmTokens.add(token);
+                    System.out.println("🔥 Registered new FCM Token: " + token);
                 }
 
                 String resp = "{\"status\":\"success\"}";
@@ -107,7 +166,8 @@ public class KasiBitesServer {
             }
 
             String rawBody = body.toString();
-            String customerPhone = extractFormParam(rawBody, "From").replace("whatsapp:", "");
+            String rawFrom = java.net.URLDecoder.decode(extractFormParam(rawBody, "From"), StandardCharsets.UTF_8);
+            String customerPhone = rawFrom.replace("whatsapp:", "");
             String messageBody = java.net.URLDecoder.decode(extractFormParam(rawBody, "Body"), StandardCharsets.UTF_8);
 
             String orderId = "ORD-" + (new Random().nextInt(900) + 100);
@@ -118,7 +178,7 @@ public class KasiBitesServer {
             newOrder.put("status", "PENDING");
             newOrder.put("timestamp", Instant.now().toString());
 
-            List<Map<String, Object>> items = new ArrayList<>();
+            List> items = new ArrayList<>();
             Map<String, Object> item = new HashMap<>();
             item.put("name", messageBody.isEmpty() ? "Standard Kota" : messageBody);
             item.put("quantity", 1);
@@ -127,7 +187,10 @@ public class KasiBitesServer {
 
             orders.add(0, newOrder);
 
-            String twiml = "<Response><Message>Your order (" + orderId + ") has been received by Kasi Bites! 🍳</Message></Response>";
+            String twiml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+               "<Response>" +
+               "<Message>Your order (" + orderId + ") has been received by Kasi Bites! 🍳 We are getting it ready.</Message>" +
+               "</Response>";
             exchange.getResponseHeaders().set("Content-Type", "text/xml");
             exchange.sendResponseHeaders(200, twiml.getBytes().length);
             OutputStream os = exchange.getResponseBody();
@@ -138,7 +201,18 @@ public class KasiBitesServer {
         }
     }
 
-    private static String toJsonArray(List<Map<String, Object>> list) {
+    private static String extractJsonField(String json, String fieldName) {
+        String searchKey = "\"" + fieldName + "\":";
+        int idx = json.indexOf(searchKey);
+        if (idx == -1) return "";
+        int start = json.indexOf("\"", idx + searchKey.length());
+        if (start == -1) return "";
+        int end = json.indexOf("\"", start + 1);
+        if (end == -1) return "";
+        return json.substring(start + 1, end);
+    }
+
+    private static String toJsonArray(List> list) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < list.size(); i++) {
             sb.append(mapToJson(list.get(i)));

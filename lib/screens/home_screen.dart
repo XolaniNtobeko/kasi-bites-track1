@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../models/order_model.dart';
 import '../providers/order_provider.dart';
 
@@ -35,7 +37,17 @@ class _HomeScreenState extends State<HomeScreen> {
     String? token = await messaging.getToken();
     debugPrint('🔥 FCM Token: $token');
 
-    // 3. Listen to foreground messages
+    if (token != null) {
+      await _sendTokenToBackend(token);
+    }
+
+    // 3. Listen for token refreshes (in case FCM rotates the token)
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+      debugPrint('🔄 FCM Token refreshed: $newToken');
+      _sendTokenToBackend(newToken);
+    });
+
+    // 4. Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('🔔 Foreground message received: ${message.notification?.title}');
       if (message.notification != null && mounted) {
@@ -47,6 +59,28 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     });
+  }
+
+  Future<void> _sendTokenToBackend(String token) async {
+    const String backendUrl = 'http://10.0.2.2:8082/api/devices'; 
+    try {
+      final response = await http.post(
+        Uri.parse(backendUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'fcmToken': token,
+          'platform': 'android',
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('✅ FCM Token successfully registered with KasiBitesServer');
+      } else {
+        debugPrint('⚠️ Failed to register token. Status: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error connecting to backend for token registration: $e');
+    }
   }
 
   void _showOrderDetailsBottomSheet(BuildContext context, MerchantOrder order) {

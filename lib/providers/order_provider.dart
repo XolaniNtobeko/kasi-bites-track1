@@ -19,7 +19,7 @@ class OrderProvider extends ChangeNotifier {
   }
 
   final List<MerchantOrder> _orders = [];
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   List<MerchantOrder> get orders => List.unmodifiable(_orders);
   bool get isLoading => _isLoading;
